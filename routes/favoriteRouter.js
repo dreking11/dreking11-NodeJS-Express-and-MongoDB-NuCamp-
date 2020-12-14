@@ -2,7 +2,6 @@ const express = require('express');
 const Favorite = require('../models/favorites');
 const authenticate = require('../authenticate');
 const cors = require('./cors');
-const { findOneAndDelete, findOne } = require('../models/favorites');
 
 const favoriteRouter = express.Router();
 
@@ -10,8 +9,8 @@ favoriteRouter.route('/')
 .options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
 .get(cors.cors,authenticate.verifyUser,(req, res, next) => {
     Favorite.find( { user: req.user._id })
-    .populate('User')
-    .populate('Campsite')
+    .populate('favorites.User')
+    .populate('favorites.Campsites')
     .then(favorite =>{
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -59,7 +58,7 @@ favoriteRouter.route('/')
     res.end('PUT operation not supported on /favorites');
 })
 .delete(cors.corsWithOptions,authenticate.verifyUser,(req, res, next) => {
-    findOneAndDelete({user: req.user._id})
+    Favorite.findOneAndDelete({user: req.user._id})
     .then((favorite) => {
         res.statusCode = 200;
     if (favorite) {
@@ -115,11 +114,12 @@ favoriteRouter.route('/:campsiteId')
 })
 .delete(cors.corsWithOptions,authenticate.verifyUser,(req, res, next) => {
     Favorite.findOne({user: req.user._id})
+    .then(favorite => {
     if (favorite) {
-        function Url(id) {
+        function checkUrl(id) {
             return id.toString() !== req.params.campsiteId;
         }
-        favorite.campsites = favorite.campsites.filter(Url)
+        favorite.campsites = favorite.campsites.filter(checkUrl)
         favorite.save()
         .then((favorite) => {
             res.statusCode = 200;
@@ -132,6 +132,7 @@ favoriteRouter.route('/:campsiteId')
         res.setHeader('Content-Type', 'application/json');
         res.json(response);
     }
+    })
 });
 
 module.exports = favoriteRouter;
